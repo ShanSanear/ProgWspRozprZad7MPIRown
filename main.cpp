@@ -87,11 +87,19 @@ int main()
             MPI_Send(&A[i][0], 3, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
             
         }
+        int output_columns = 3;
+        int inner_size = 3;
         MPI_Bcast(&B[0][0], 9, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         // Process node 0 part of parallel processing
-        //for (int i = 1; i < numOfNodes; i++) {
-        //    MPI_Recv(&C[i][0], 3, MPI_DOUBLE,i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        //}
+        for (int col = 0; col < output_columns; col++) {
+            for (int inner = 0; inner < inner_size; inner++) {
+                PLOG_INFO << "Column: " << col << " inner: " << inner;
+                C[0][col] += A[0][inner] * B[inner][col];
+            }
+        }
+        for (int i = 1; i < numOfNodes; i++) {
+           MPI_Recv(&C[i][0], 3, MPI_DOUBLE,i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
     }
     else
     {
@@ -124,7 +132,7 @@ int main()
             }
         }
         
-        //MPI_Send(LocalC, 3, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(LocalC, 3, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
     }
     PLOG_INFO << "Finished processing, node: " << node;
 
