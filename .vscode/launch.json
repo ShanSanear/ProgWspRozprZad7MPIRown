@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "MPIEXEC",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/local/bin/mpiexec",
+            "args": ["-np", "4", "-oversubscribe", "main"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "MPIC++"
+        }
+    ]
+}

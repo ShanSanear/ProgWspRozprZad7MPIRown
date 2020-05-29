@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "options" : {
+        "env" : {
+            "OMPI_CXXFLAGS" : "-I/usr/local/include -I${workspaceFolder}/include"
+        }
+    },
+    "tasks": [
+        {
+            "label": "MPIC++",
+            "type": "shell",
+            "command": "mpicxx",
+            "args": ["main.cpp", "-o", "main"],
+            "group": "build",
+            "dependsOrder": "sequence"
+            
+        },
+        {
+            "label": "Build and deploy",
+            "type": "shell",
+            "command": "scp",
+            "args" : ["main", "mpi@node1:${workspaceFolder}/main"],
+            "dependsOn" : "MPIC++",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        }
+        
+    ]
+}
