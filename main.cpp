@@ -59,7 +59,16 @@ int main()
     
     // End of creating datatype
     double C[3][3] = { 0 };
-    int matrix_size = 12;
+    
+    std::vector<std::vector <double> > matrix;
+    for (int i = 0; i < 10; i++) {
+        std::vector<double> entry;
+        for (int j = 0; j < 10; j++) {
+            entry.push_back((double) j);
+        }
+        matrix.push_back(entry);
+    }
+    int matrix_size = matrix.size();
     //std::stringstream resultStream;
     //resultStream << std::fixed << std::setprecision(standardPrecision);
     if (node == 0)
