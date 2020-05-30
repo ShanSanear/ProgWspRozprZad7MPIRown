@@ -68,6 +68,11 @@ int main()
         }
         matrix.push_back(entry);
     }
+    std::vector<double> simple_entry;
+    for (int j = 0; j < 10; j++) {
+        simple_entry.push_back((double) j);
+    }
+
     int matrix_size = matrix.size();
     //std::stringstream resultStream;
     //resultStream << std::fixed << std::setprecision(standardPrecision);
@@ -94,6 +99,8 @@ int main()
         PLOG_INFO << "Sending data to other nodes";
         int rest = matrix_size % numOfNodes;
         int chunk = matrix_size / numOfNodes;
+        //int column_count = matrix.at(0).size();
+        int column_count = simple_entry.size();
         PLOG_DEBUG << "Rest from division: " << rest;
         for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
         {
@@ -101,6 +108,10 @@ int main()
             int end = (currNodeNum + 1) * chunk - 1;
             MPI_Send(&start, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             MPI_Send(&end, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
+            MPI_Send(&column_count, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
+            MPI_Send(simple_entry.data(), column_count, MPI_DOUBLE, currNodeNum, 0, MPI_COMM_WORLD);
+            
+
             //MPI_Send(&calculateStruct, 1, mpiCalculateParametersDatatype, i, 0, MPI_COMM_WORLD);
             //MPI_Send(&A[i][0], 3, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
 
@@ -139,12 +150,23 @@ int main()
         // B[1][1] = 1.0;
         int local_start = 0;
         int local_end = 0;
+        int local_col_count = 0;
+        std::vector<std::vector <double> > local_matrix;
+        std::vector <double> local_entry;
 
         //PLOG_INFO << "Calculating integral, node: " << node;
         
         MPI_Recv(&local_start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&local_end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&local_col_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        local_entry.resize(local_col_count);
+        PLOG_DEBUG << "Local col count: " << local_col_count;
+        MPI_Recv(local_entry.data(), local_col_count, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
+        PLOG_DEBUG << "Column count: " << local_col_count << " node number: " << node;
+        for (double a : local_entry) {
+            PLOG_DEBUG << a << " for node number: " << node;
+        }
         //MPI_Bcast(&B[0][0], 9, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         //matrix output_matrix(matrix_a.size(), std::vector<double>(matrix_b.at(0).size()));
         // int output_rows = output_matrix.size();
