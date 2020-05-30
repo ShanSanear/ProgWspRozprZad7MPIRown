@@ -57,12 +57,6 @@ int main()
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &numOfNodes);
     MPI_Comm_rank(MPI_COMM_WORLD, &node);
-    // Change datatype
-    
-    // End of creating datatype
-    
-    //std::stringstream resultStream;
-    //resultStream << std::fixed << std::setprecision(standardPrecision);
     if (node == 0)
     {
         std::vector<std::vector <double> > matrix = load_csv("a.csv");
@@ -91,7 +85,7 @@ int main()
             for (int current_row = start; current_row <= end; current_row++) {
                 MPI_Send(matrix.at(current_row).data(), column_count, MPI_DOUBLE, currNodeNum, 0, MPI_COMM_WORLD);
             }
-            //MPI_Send(simple_entry.data(), row_count, MPI_DOUBLE, currNodeNum, 0, MPI_COMM_WORLD);
+
         }
         int local_start = (numOfNodes-1)*chunk;
         
@@ -112,21 +106,13 @@ int main()
     {
         int local_start = 0;
         int local_end = 0;
-        //int local_row_count = 0;
         int local_col_count = 0;
         std::vector<std::vector <double> > local_matrix;
         std::vector <double> local_entry;
-
-        //PLOG_INFO << "Calculating integral, node: " << node;
-        
         MPI_Recv(&local_start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&local_end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        //MPI_Recv(&local_row_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        //local_row_count = local_start - local_end + 1;
         MPI_Recv(&local_col_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        //PLOG_DEBUG << "Local col count: " << local_row_count;
         PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
-        //PLOG_DEBUG << "Row count: " << local_row_count << " node number: " << node;
         for (int current_row = local_start; current_row <= local_end; current_row++) {
             std::vector <double> local_entry;
             local_entry.resize(local_col_count);
@@ -152,20 +138,7 @@ int main()
         //Postprocessing
         endTime = MPI_Wtime();
         parallelTimeTaken = endTime - startTime;
-        // resultStream.str(std::string());
-        // resultStream << "Parallized result: " << static_cast<double>(result_quadratic);
-        // PLOG_INFO << resultStream.str();
-        // resultStream.str(std::string());
-        // resultStream << std::setprecision(piPrecision);
-        // resultStream << "Parallized Pi result: " << static_cast<double>(result_pi);
-        // PLOG_INFO << resultStream.str();
         PLOG_INFO << "Parallized time: " << parallelTimeTaken << " second(s)";
-        // for (int i = 0; i < 3; i++) {
-        //     for (int j = 0; j < 3; j++) {
-        //         printf("%f, ", C[i][j]);
-        //     }
-        //     printf("\n");
-        // }
     }
     MPI_Finalize();
     return 0;
