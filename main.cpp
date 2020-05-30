@@ -173,6 +173,8 @@ int main()
         matrix_t output_matrix = multiply_matrixes(local_matrix_a, matrix_b);
         for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
         {
+            matrix_t out_matrix = receive_matrix(currNodeNum);
+            //print_matrix(out_matrix, 0, "Received output matrix");
         }
     }
     else
@@ -185,6 +187,7 @@ int main()
         matrix_t local_matrix_b = receive_broadcast();
         PLOG_INFO << "Loaded matrix b for node " << node;
         matrix_t output_matrix = multiply_matrixes(local_matrix_a, local_matrix_b);
+        send_matrix(output_matrix, 0, 0, output_matrix.size() - 1, output_matrix.at(0).size());
     }
     PLOG_INFO << "Finished processing, node: " << node;
 
