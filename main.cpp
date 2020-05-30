@@ -29,22 +29,6 @@ matrix_t load_csv(const std::string input_csv_file) {
     return parsed_csv;
 }
 
-double get_double_from_stdin(const char *message)
-{
-    double out;
-    std::cout << message << std::endl;
-    std::cin >> out;
-    return out;
-}
-
-int get_int_from_stdin(const char *message)
-{
-    int out;
-    std::cout << message << std::endl;
-    std::cin >> out;
-    return out;
-}
-
 void print_matrix(matrix_t matrix, int node, std::string matrix_name) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(6);
