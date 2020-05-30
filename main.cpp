@@ -50,7 +50,7 @@ int main()
     double startTime, endTime, parallelTimeTaken, timeSingle;
     plog::RollingFileAppender<plog::TxtFormatter> fileAppender("Datalogger.txt", 1048576, 5);
     plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
-    plog::init(plog::info, &fileAppender).addAppender(&consoleAppender);
+    plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
     int node, numOfNodes;
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &numOfNodes);
@@ -59,14 +59,16 @@ int main()
     
     // End of creating datatype
     double C[3][3] = { 0 };
-    std::stringstream resultStream;
-    resultStream << std::fixed << std::setprecision(standardPrecision);
+    int matrix_size = 12;
+    //std::stringstream resultStream;
+    //resultStream << std::fixed << std::setprecision(standardPrecision);
     if (node == 0)
     {
         PLOG_INFO << "Getting input values";
         //get input parameters
-        double A[3][3] = { {1,2,3}, {4,5,6}, {7,8,9} };
-        double B[3][3] = { {1,1,1}, {2,2,2}, {3,3,3} };
+        // double A[3][3] = { {1,2,3}, {4,5,6}, {7,8,9} };
+        // double B[3][3] = { {1,1,1}, {2,2,2}, {3,3,3} };
+
         
 
         startTime = MPI_Wtime();
@@ -75,31 +77,45 @@ int main()
         endTime = MPI_Wtime();
         timeSingle = endTime - startTime;
         // TODO rename this string
-        PLOG_INFO << resultStream.str();
-        PLOG_INFO << "Single node time: " << timeSingle << " second(s)";
-        resultStream << std::setprecision(standardPrecision);
+        //PLOG_INFO << resultStream.str();
+        //PLOG_INFO << "Single node time: " << timeSingle << " second(s)";
+        //resultStream << std::setprecision(standardPrecision);
         // prepare structure
         startTime = MPI_Wtime();
         PLOG_INFO << "Sending data to other nodes";
-        for (int i = 1; i < numOfNodes; i++)
+        int rest = matrix_size % numOfNodes;
+        int chunk = matrix_size / numOfNodes;
+        PLOG_DEBUG << "Rest from division: " << rest;
+        for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
         {
+            int start = currNodeNum * chunk;
+            int end = (currNodeNum + 1) * chunk - 1;
+            MPI_Send(&start, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
+            MPI_Send(&end, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             //MPI_Send(&calculateStruct, 1, mpiCalculateParametersDatatype, i, 0, MPI_COMM_WORLD);
-            MPI_Send(&A[i][0], 3, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+            //MPI_Send(&A[i][0], 3, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+
             
         }
-        int output_columns = 3;
-        int inner_size = 3;
-        MPI_Bcast(&B[0][0], 9, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        // Process node 0 part of parallel processing
-        for (int col = 0; col < output_columns; col++) {
-            for (int inner = 0; inner < inner_size; inner++) {
-                PLOG_INFO << "Column: " << col << " inner: " << inner;
-                C[0][col] += A[0][inner] * B[inner][col];
-            }
+        int local_start = 0;
+        int local_end = chunk-1;
+        PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
+        if (rest != 0) {
+            local_start = matrix_size - rest;
+            local_end = matrix_size - 1;
+            PLOG_DEBUG << "Rest start: " << local_start << " end: " << local_end << " node number: " << node;
         }
-        for (int i = 1; i < numOfNodes; i++) {
-           MPI_Recv(&C[i][0], 3, MPI_DOUBLE,i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        }
+        // MPI_Bcast(&B[0][0], 9, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        // // Process node 0 part of parallel processing
+        // for (int col = 0; col < output_columns; col++) {
+        //     for (int inner = 0; inner < inner_size; inner++) {
+        //         PLOG_INFO << "Column: " << col << " inner: " << inner;
+        //         C[0][col] += A[0][inner] * B[inner][col];
+        //     }
+        // }
+        // for (int i = 1; i < numOfNodes; i++) {
+        //    MPI_Recv(&C[i][0], 3, MPI_DOUBLE,i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        // }
     }
     else
     {
@@ -108,33 +124,37 @@ int main()
         
         // Processing parallel part for other nodes
 
-        double B[3][3] = { 0};
-        double LocalA[3] = { 0 };
-        double LocalC[3] = { 0 };
-        B[1][1] = 1.0;
+        // double B[3][3] = { 0};
+        // double LocalA[3] = { 0 };
+        // double LocalC[3] = { 0 };
+        // B[1][1] = 1.0;
+        int local_start = 0;
+        int local_end = 0;
 
-        PLOG_INFO << "Calculating integral, node: " << node;
+        //PLOG_INFO << "Calculating integral, node: " << node;
         
-        MPI_Recv(LocalA, 3, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Bcast(&B[0][0], 9, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Recv(&local_start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(&local_end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
+        //MPI_Bcast(&B[0][0], 9, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         //matrix output_matrix(matrix_a.size(), std::vector<double>(matrix_b.at(0).size()));
         // int output_rows = output_matrix.size();
         // int output_columns = output_matrix.at(0).size();
         // int inner_size = matrix_b.size();
         // int output_rows = 1;
-        int output_columns = 3;
-        int inner_size = 3;
-        printf("Multiplying matrixes using sequential method\n");
-        for (int col = 0; col < output_columns; col++) {
-            for (int inner = 0; inner < inner_size; inner++) {
-                PLOG_INFO << "Column: " << col << " inner: " << inner;
-                LocalC[col] += LocalA[inner] * B[inner][col];
-            }
-        }
+        // int output_columns = 3;
+        // int inner_size = 3;
+        // printf("Multiplying matrixes using sequential method\n");
+        // for (int col = 0; col < output_columns; col++) {
+        //     for (int inner = 0; inner < inner_size; inner++) {
+        //         PLOG_INFO << "Column: " << col << " inner: " << inner;
+        //         LocalC[col] += LocalA[inner] * B[inner][col];
+        //     }
+        // }
         
-        MPI_Send(LocalC, 3, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+        // MPI_Send(LocalC, 3, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
     }
-    PLOG_INFO << "Finished processing, node: " << node;
+    //PLOG_INFO << "Finished processing, node: " << node;
 
   
     MPI_Barrier(MPI_COMM_WORLD);
@@ -151,12 +171,12 @@ int main()
         // resultStream << "Parallized Pi result: " << static_cast<double>(result_pi);
         // PLOG_INFO << resultStream.str();
         // PLOG_INFO << "Parallized time: " << parallelTimeTaken << " second(s)";
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                printf("%f, ", C[i][j]);
-            }
-            printf("\n");
-        }
+        // for (int i = 0; i < 3; i++) {
+        //     for (int j = 0; j < 3; j++) {
+        //         printf("%f, ", C[i][j]);
+        //     }
+        //     printf("\n");
+        // }
     }
     MPI_Finalize();
     return 0;
