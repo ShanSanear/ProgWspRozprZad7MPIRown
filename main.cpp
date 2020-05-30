@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <cstdlib>
+#include <iterator>
 
 using matrix_t = std::vector<std::vector<double>>;
 
@@ -129,10 +130,23 @@ matrix_t receive_broadcast()
     return received_matrix;
 }
 
+void save_matrix(const matrix_t &matrix_to_save, const std::string &output_file_path) {
+    std::ofstream output(output_file_path);
+
+    output << matrix_to_save.size() << std::endl;
+    output << matrix_to_save.at(0).size() << std::endl;
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(6);
+    for (auto row : matrix_to_save) {
+        oss.str(std::string());
+        std::copy(row.begin(), row.end() - 1, std::ostream_iterator<double>(oss, ";"));
+        std::copy(row.end() - 1, row.end(), std::ostream_iterator<double>(oss));
+        output << oss.str() << std::endl;
+    }
+}
+
 int main()
 {
-    int standardPrecision = 6;
-    const int struct_size = 7;
     double startTime, endTime, parallelTimeTaken, timeSingle;
     plog::RollingFileAppender<plog::TxtFormatter> fileAppender("Datalogger.txt", 1048576, 5);
     plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
@@ -170,12 +184,15 @@ int main()
 
         int local_end = matrix_size;
         matrix_t local_matrix_a = matrix_t(matrix_a.begin() + local_start, matrix_a.end());
-        matrix_t output_matrix = multiply_matrixes(local_matrix_a, matrix_b);
+        matrix_t local_matrix = multiply_matrixes(local_matrix_a, matrix_b);
+        matrix_t final_matrix;
         for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
         {
             matrix_t out_matrix = receive_matrix(currNodeNum);
-            //print_matrix(out_matrix, 0, "Received output matrix");
+            final_matrix.insert(final_matrix.end(), out_matrix.begin(), out_matrix.end());
         }
+        final_matrix.insert(final_matrix.end(), local_matrix.begin(), local_matrix.end());
+        save_matrix(final_matrix, "c.csv");
     }
     else
     {
