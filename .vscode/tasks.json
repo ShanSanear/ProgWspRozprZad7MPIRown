@@ -10,7 +10,7 @@
             "label": "MPIC++",
             "type": "shell",
             "command": "mpicxx",
-            "args": ["main.cpp", "-o", "main"],
+            "args": ["-std=c++11", "main.cpp", "-o", "main"],
             "group": "build",
             "dependsOrder": "sequence"
             
