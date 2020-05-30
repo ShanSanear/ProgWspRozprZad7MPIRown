@@ -82,31 +82,37 @@ int main()
         PLOG_INFO << "Rest from division: " << rest;
         for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
         {
-            int start = currNodeNum * chunk;
-            int end = (currNodeNum + 1) * chunk - 1;
+            int start = (currNodeNum - 1) * chunk;
+            int end = currNodeNum * chunk - 1;
             MPI_Send(&start, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             MPI_Send(&end, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
-            MPI_Send(&row_count, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
+            //MPI_Send(&row_count, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             MPI_Send(&column_count, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             for (int current_row = start; current_row <= end; current_row++) {
                 MPI_Send(matrix.at(current_row).data(), column_count, MPI_DOUBLE, currNodeNum, 0, MPI_COMM_WORLD);
             }
             //MPI_Send(simple_entry.data(), row_count, MPI_DOUBLE, currNodeNum, 0, MPI_COMM_WORLD);
         }
-        int local_start = 0;
-        int local_end = chunk-1;
+        int local_start = (numOfNodes-1)*chunk;
+        
+        int local_end = matrix_size;
         PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
-        if (rest != 0) {
-            local_start = matrix_size - rest;
-            local_end = matrix_size - 1;
-            PLOG_DEBUG << "Rest start: " << local_start << " end: " << local_end << " node number: " << node;
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2);
+        for (int current_row = local_start; current_row < local_end; current_row++) {
+            for (int current_col = 0; current_col < column_count; current_col++) {
+                oss << matrix[current_row][current_col] << ";";
+            }
+            oss << "\n";
         }
+        
+        PLOG_INFO << oss.str();
     }
     else
     {
         int local_start = 0;
         int local_end = 0;
-        int local_row_count = 0;
+        //int local_row_count = 0;
         int local_col_count = 0;
         std::vector<std::vector <double> > local_matrix;
         std::vector <double> local_entry;
@@ -115,13 +121,12 @@ int main()
         
         MPI_Recv(&local_start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&local_end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&local_row_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        local_row_count = local_start - local_end + 1;
+        //MPI_Recv(&local_row_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        //local_row_count = local_start - local_end + 1;
         MPI_Recv(&local_col_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        local_matrix.resize(local_row_count);
-        PLOG_DEBUG << "Local col count: " << local_row_count;
+        //PLOG_DEBUG << "Local col count: " << local_row_count;
         PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
-        PLOG_DEBUG << "Row count: " << local_row_count << " node number: " << node;
+        //PLOG_DEBUG << "Row count: " << local_row_count << " node number: " << node;
         for (int current_row = local_start; current_row <= local_end; current_row++) {
             std::vector <double> local_entry;
             local_entry.resize(local_col_count);
