@@ -56,7 +56,7 @@ matrix_t multiply_matrixes(matrix_t matrix_a, matrix_t matrix_b) {
             }
         }
     }
-    print_matrix(output_matrix, 1, "output matrix");
+    //print_matrix(output_matrix, 1, "output matrix");
     return output_matrix;
 
 }
@@ -66,8 +66,34 @@ void send_matrix(const matrix_t &matrix_to_send, int target_node, int start_row,
     MPI_Send(&end_row, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
     MPI_Send(&column_count, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
     for (int current_row = start_row; current_row <= end_row; current_row++) {
-            PLOG_INFO << "Sending: " << start_row << ";" << end_row << ";" << column_count << ";" << current_row;
         MPI_Send(matrix_to_send.at(current_row).data(), column_count, MPI_DOUBLE, target_node, 0, MPI_COMM_WORLD);
+    }
+}
+
+matrix_t receive_matrix(int source_node) {
+    matrix_t output_matrix;
+    int local_start = 0;
+    int local_end = 0;
+    int local_col_count = 0;
+    MPI_Recv(&local_start, 1, MPI_INT, source_node, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(&local_end, 1, MPI_INT, source_node, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(&local_col_count, 1, MPI_INT, source_node, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+for (int current_row = local_start; current_row <= local_end; current_row++) {
+        std::vector <double> local_entry;
+        local_entry.resize(local_col_count);
+        MPI_Recv(local_entry.data(), local_col_count, MPI_DOUBLE, source_node, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        output_matrix.push_back(local_entry);
+    }
+    return output_matrix;
+}
+
+void send_broadcast(matrix_t matrix_to_send) {
+    int column_count = matrix_to_send.at(0).size();
+    int row_count = matrix_to_send.size();
+    MPI_Bcast(&row_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&column_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    for (int current_row = 0; current_row < row_count; current_row++) {
+        MPI_Bcast(matrix_to_send.at(current_row).data(), column_count, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
 }
 
@@ -105,22 +131,9 @@ int main()
         {
             int start = (currNodeNum - 1) * chunk;
             int end = currNodeNum * chunk - 1;
-            //send_matrix(matrix_a, currNodeNum, start, end, column_count);
-            MPI_Send(&start, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
-            MPI_Send(&end, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
-            MPI_Send(&column_count, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
-            for (int current_row = start; current_row <= end; current_row++) {
-                //PLOG_INFO << "Sending: " << start << ";" << end << ";" << column_count << ";" << current_row;
-                MPI_Send(matrix_a.at(current_row).data(), column_count, MPI_DOUBLE, currNodeNum, 0, MPI_COMM_WORLD);
-            }
-            // column_count = matrix_b.at(0).size();
-            // row_count = matrix_b.size();
+            send_matrix(matrix_a, currNodeNum, start, end, column_count);
         }
-        MPI_Bcast(&row_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        MPI_Bcast(&column_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        for (int current_row = 0; current_row < row_count; current_row++) {
-            MPI_Bcast(matrix_b.at(current_row).data(), column_count, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        }
+        send_broadcast(matrix_b);
         int local_start = (numOfNodes-1)*chunk;
         
         int local_end = matrix_size;
@@ -138,20 +151,8 @@ int main()
         int local_col_count = 0;
         int local_b_col_count = 0;
         int local_b_row_count = 0;
-        matrix_t local_matrix_a;
+        matrix_t local_matrix_a = receive_matrix(0);
         matrix_t local_matrix_b;
-        std::vector <double> local_entry;
-        MPI_Recv(&local_start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&local_end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(&local_col_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        //PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
-        for (int current_row = local_start; current_row <= local_end; current_row++) {
-            std::vector <double> local_entry;
-            local_entry.resize(local_col_count);
-            MPI_Recv(local_entry.data(), local_col_count, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            local_matrix_a.push_back(local_entry);
-        }
-        //print_matrix(local_matrix_a, node, "Matrix A");
         PLOG_INFO << "Loaded matrix a for node " << node;
         MPI_Bcast(&local_b_row_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&local_b_col_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
