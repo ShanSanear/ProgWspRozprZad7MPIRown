@@ -14,7 +14,7 @@ matrix_t load_csv(const std::string input_csv_file) {
     std::string line;
     // Skipping required dimension lines
     std::getline(data, line);
-    std::vector<std::vector<double> > parsed_csv;
+    matrix_t parsed_csv;
     while (std::getline(data, line)) {
         std::vector<double> parsedRow;
         std::stringstream s(line);
@@ -61,6 +61,16 @@ matrix_t multiply_matrixes(matrix_t matrix_a, matrix_t matrix_b) {
 
 }
 
+void send_matrix(const matrix_t &matrix_to_send, int target_node, int start_row, int end_row, int column_count) {
+    MPI_Send(&start_row, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
+    MPI_Send(&end_row, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
+    MPI_Send(&column_count, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
+    for (int current_row = start_row; current_row <= end_row; current_row++) {
+            PLOG_INFO << "Sending: " << start_row << ";" << end_row << ";" << column_count << ";" << current_row;
+        MPI_Send(matrix_to_send.at(current_row).data(), column_count, MPI_DOUBLE, target_node, 0, MPI_COMM_WORLD);
+    }
+}
+
 int main()
 {
     int standardPrecision = 6;
@@ -95,15 +105,16 @@ int main()
         {
             int start = (currNodeNum - 1) * chunk;
             int end = currNodeNum * chunk - 1;
+            //send_matrix(matrix_a, currNodeNum, start, end, column_count);
             MPI_Send(&start, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             MPI_Send(&end, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
-            //MPI_Send(&row_count, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             MPI_Send(&column_count, 1, MPI_INT, currNodeNum, 0, MPI_COMM_WORLD);
             for (int current_row = start; current_row <= end; current_row++) {
+                //PLOG_INFO << "Sending: " << start << ";" << end << ";" << column_count << ";" << current_row;
                 MPI_Send(matrix_a.at(current_row).data(), column_count, MPI_DOUBLE, currNodeNum, 0, MPI_COMM_WORLD);
             }
-            column_count = matrix_b.at(0).size();
-            row_count = matrix_b.size();
+            // column_count = matrix_b.at(0).size();
+            // row_count = matrix_b.size();
         }
         MPI_Bcast(&row_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&column_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -114,8 +125,11 @@ int main()
         
         int local_end = matrix_size;
         PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
-        matrix_t local_matrix_a = std::vector<std::vector<double> > (matrix_a.begin() + local_start, matrix_a.end());
-        std::vector<std::vector<double> > output_matrix = multiply_matrixes(local_matrix_a, matrix_b);
+        matrix_t local_matrix_a = matrix_t (matrix_a.begin() + local_start, matrix_a.end());
+        matrix_t output_matrix = multiply_matrixes(local_matrix_a, matrix_b);
+        for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++) {
+            
+        }
     }
     else
     {
@@ -130,14 +144,14 @@ int main()
         MPI_Recv(&local_start, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&local_end, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&local_col_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
+        //PLOG_DEBUG << "Start: " << local_start << " end: " << local_end << " node number: " << node;
         for (int current_row = local_start; current_row <= local_end; current_row++) {
             std::vector <double> local_entry;
             local_entry.resize(local_col_count);
             MPI_Recv(local_entry.data(), local_col_count, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             local_matrix_a.push_back(local_entry);
         }
-        print_matrix(local_matrix_a, node, "Matrix A");
+        //print_matrix(local_matrix_a, node, "Matrix A");
         PLOG_INFO << "Loaded matrix a for node " << node;
         MPI_Bcast(&local_b_row_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
         MPI_Bcast(&local_b_col_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -148,7 +162,7 @@ int main()
             local_matrix_b.push_back(local_entry_b);
         }
         PLOG_INFO << "Loaded matrix b for node " << node;
-        std::vector<std::vector<double> > output_matrix = multiply_matrixes(local_matrix_a, local_matrix_b);        
+        matrix_t output_matrix = multiply_matrixes(local_matrix_a, local_matrix_b);        
         
     }
     PLOG_INFO << "Finished processing, node: " << node;
