@@ -52,12 +52,10 @@ void print_matrix(matrix_t matrix, int node, std::string matrix_name)
 
 matrix_t multiply_matrixes(matrix_t matrix_a, matrix_t matrix_b)
 {
-
     matrix_t output_matrix(matrix_a.size(), std::vector<double>(matrix_b.at(0).size()));
     int output_rows = output_matrix.size();
     int output_columns = output_matrix.at(0).size();
     int inner_size = matrix_b.size();
-    printf("Multiplying matrixes using sequential method\n");
     for (int row = 0; row < output_rows; row++)
     {
         for (int col = 0; col < output_columns; col++)
