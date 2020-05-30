@@ -13,12 +13,17 @@ using matrix_t = std::vector<std::vector<double>>;
 
 matrix_t load_csv(std::string input_csv_file)
 {
-    PLOG_INFO << "Loading matrix";
+    PLOG_INFO << "Loading matrix from path: " << input_csv_file;
     std::ifstream data(input_csv_file);
     std::string line;
     // Skipping required dimension lines
     std::getline(data, line);
+    // Checking if file contains second dimensional line - if it does not, go back
+    std::streampos curr_position = data.tellg();
     std::getline(data, line);
+    if (line.find(";") != std::string::npos) {
+        data.seekg(curr_position, std::ios_base::beg);
+    }
     matrix_t parsed_csv;
     while (std::getline(data, line))
     {
@@ -252,5 +257,5 @@ int main()
 
 /*
 Implementacja została wykonana dla dowolnej liczby węzłów oraz dla macierzy o dowolnych rozmiarach
-Co za tym idzie - spodziewany jest format dwóch pierwszych linii z wielkościami macierzy a następnie sama macierz
+Działa dla obu formatów danych wejściowych, gdyż dane wczytywane są dynamicznie
 */
