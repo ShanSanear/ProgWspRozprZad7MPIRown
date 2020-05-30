@@ -9,12 +9,13 @@
 
 using matrix_t = std::vector<std::vector<double>>;
 
-matrix_t load_csv(const std::string input_csv_file)
+matrix_t load_csv(std::string input_csv_file)
 {
     PLOG_INFO << "Loading matrix";
     std::ifstream data(input_csv_file);
     std::string line;
     // Skipping required dimension lines
+    std::getline(data, line);
     std::getline(data, line);
     matrix_t parsed_csv;
     while (std::getline(data, line))
@@ -67,7 +68,6 @@ matrix_t multiply_matrixes(matrix_t matrix_a, matrix_t matrix_b)
             }
         }
     }
-    //print_matrix(output_matrix, 1, "output matrix");
     return output_matrix;
 }
 
@@ -136,7 +136,7 @@ void save_matrix(const matrix_t &matrix_to_save, const std::string &output_file_
     output << matrix_to_save.size() << std::endl;
     output << matrix_to_save.at(0).size() << std::endl;
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(6);
+    oss << std::fixed << std::setprecision(4);
     for (auto row : matrix_to_save) {
         oss.str(std::string());
         std::copy(row.begin(), row.end() - 1, std::ostream_iterator<double>(oss, ";"));
@@ -145,9 +145,32 @@ void save_matrix(const matrix_t &matrix_to_save, const std::string &output_file_
     }
 }
 
+void run_sequentially(const matrix_t matrix_a, const matrix_t matrix_b) {
+    matrix_t output_matrix(matrix_a.size(), std::vector<double>(matrix_b.at(0).size()));
+    int output_rows = output_matrix.size();
+    int output_columns = output_matrix.at(0).size();
+    int inner_size = matrix_b.size();
+    PLOG_INFO << "Multiplying matrixes using sequential method";
+    for (int row = 0; row < output_rows; row++) {
+        for (int col = 0; col < output_columns; col++) {
+            for (int inner = 0; inner < inner_size; inner++) {
+                output_matrix[row][col] += matrix_a[row][inner] * matrix_b[inner][col];
+            }
+        }
+    }
+}
+
+std::string get_string_from_cin(const std::string prompt) {
+    printf("%s\n", prompt.c_str());
+    std::string value;
+    std::cin >> value;
+    return value;
+}
+
 int main()
 {
     double startTime, endTime, parallelTimeTaken, timeSingle;
+    matrix_t final_matrix;
     plog::RollingFileAppender<plog::TxtFormatter> fileAppender("Datalogger.txt", 1048576, 5);
     plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
     plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
@@ -155,15 +178,20 @@ int main()
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &numOfNodes);
     MPI_Comm_rank(MPI_COMM_WORLD, &node);
+    // Master node
     if (node == 0)
     {
-        matrix_t matrix_a = load_csv("a.csv");
-        matrix_t matrix_b = load_csv("b.csv");
+        std::string matrix_a_path = get_string_from_cin("Provide path for matrix A:");
+        PLOG_INFO << "Path for matrix a: " << matrix_a_path;
+        std::string matrix_b_path = get_string_from_cin("Provide path for Matrix B:");
+        PLOG_INFO << "Path for matrix b: " << matrix_b_path;
+        matrix_t matrix_a = load_csv(matrix_a_path);
+        matrix_t matrix_b = load_csv(matrix_b_path);
         int matrix_size = matrix_a.size();
         PLOG_INFO << "Getting input values";
         startTime = MPI_Wtime();
         // Start processing on node 0 sequentially
-
+        run_sequentially(matrix_a, matrix_b);
         endTime = MPI_Wtime();
         timeSingle = endTime - startTime;
         startTime = MPI_Wtime();
@@ -185,20 +213,17 @@ int main()
         int local_end = matrix_size;
         matrix_t local_matrix_a = matrix_t(matrix_a.begin() + local_start, matrix_a.end());
         matrix_t local_matrix = multiply_matrixes(local_matrix_a, matrix_b);
-        matrix_t final_matrix;
+        
         for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
         {
             matrix_t out_matrix = receive_matrix(currNodeNum);
             final_matrix.insert(final_matrix.end(), out_matrix.begin(), out_matrix.end());
         }
         final_matrix.insert(final_matrix.end(), local_matrix.begin(), local_matrix.end());
-        save_matrix(final_matrix, "c.csv");
     }
+    // Other nodes
     else
     {
-        int local_start = 0;
-        int local_end = 0;
-        int local_col_count = 0;
         matrix_t local_matrix_a = receive_matrix(0);
         PLOG_INFO << "Loaded matrix a for node " << node;
         matrix_t local_matrix_b = receive_broadcast();
@@ -215,7 +240,17 @@ int main()
         endTime = MPI_Wtime();
         parallelTimeTaken = endTime - startTime;
         PLOG_INFO << "Parallized time: " << parallelTimeTaken << " second(s)";
+        PLOG_INFO << "Serialized time taken: " << timeSingle << " second(s)";
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(4);
+        oss << "C_" << timeSingle << "_" << parallelTimeTaken << ".csv";
+        save_matrix(final_matrix, oss.str());
     }
     MPI_Finalize();
     return 0;
 }
+
+/*
+Implementacja została wykonana dla dowolnej liczby węzłów oraz dla macierzy o dowolnych rozmiarach
+Co za tym idzie - spodziewany jest format dwóch pierwszych linii z wielkościami macierzy a następnie sama macierz
+*/
