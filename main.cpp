@@ -1,11 +1,13 @@
 #include <iostream>
-#include <mpi.h>
-#include <plog/Log.h>
-#include <plog/Appenders/ConsoleAppender.h>
 #include <vector>
 #include <fstream>
 #include <cstdlib>
 #include <iterator>
+
+#include <mpi.h>
+
+#include <plog/Log.h>
+#include <plog/Appenders/ConsoleAppender.h>
 
 using matrix_t = std::vector<std::vector<double>>;
 
