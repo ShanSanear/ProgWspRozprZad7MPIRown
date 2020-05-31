@@ -176,11 +176,9 @@ matrix_t process_master_node_parallel(int num_of_nodes, matrix_t &matrix_a, cons
                                       int matrix_size) {
     PLOG_INFO << "Sending data to other nodes";
     matrix_t final_matrix;
-    int rest = matrix_size % num_of_nodes;
     int chunk = matrix_size / num_of_nodes;
     int row_count = matrix_a.size();
     int column_count = matrix_a.at(0).size();
-    PLOG_INFO << "Rest from division: " << rest;
     for (int currNodeNum = 1; currNodeNum < num_of_nodes; currNodeNum++)
     {
         int start = (currNodeNum - 1) * chunk;
@@ -188,18 +186,19 @@ matrix_t process_master_node_parallel(int num_of_nodes, matrix_t &matrix_a, cons
         send_matrix(matrix_a, currNodeNum, start, end, column_count);
     }
     send_broadcast(matrix_b);
-    int local_start = (num_of_nodes - 1) * chunk;
 
+    // This will also include the "leftovers" at the end of the matrix, that couldn't be evenly distributed
+    int local_start = (num_of_nodes - 1) * chunk;
     int local_end = matrix_size;
     matrix_t local_matrix_a = matrix_t(matrix_a.begin() + local_start, matrix_a.end());
-    matrix_t local_matrix = multiply_matrixes(local_matrix_a, matrix_b);
+    matrix_t local_output_matrix = multiply_matrixes(local_matrix_a, matrix_b);
 
     for (int currNodeNum = 1; currNodeNum < num_of_nodes; currNodeNum++)
     {
         matrix_t out_matrix = receive_matrix(currNodeNum);
         final_matrix.insert(final_matrix.end(), out_matrix.begin(), out_matrix.end());
     }
-    final_matrix.insert(final_matrix.end(), local_matrix.begin(), local_matrix.end());
+    final_matrix.insert(final_matrix.end(), local_output_matrix.begin(), local_output_matrix.end());
     return final_matrix;
 }
 
