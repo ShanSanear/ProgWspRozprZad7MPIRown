@@ -11,11 +11,11 @@
 
 using matrix_t = std::vector<std::vector<double>>;
 
-void print_matrix(const matrix_t& matrix, int node, const std::string& matrix_name)
+void print_matrix(const matrix_t &matrix, int node, const std::string &matrix_name)
 {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(6);
-    for (const std::vector<double>& row : matrix)
+    for (const std::vector<double> &row : matrix)
     {
         for (double cell : row)
         {
@@ -27,14 +27,15 @@ void print_matrix(const matrix_t& matrix, int node, const std::string& matrix_na
     PLOG_INFO << oss.str();
 }
 
-std::string get_string_from_cin(const std::string& prompt) {
+std::string get_string_from_cin(const std::string &prompt)
+{
     printf("%s\n", prompt.c_str());
     std::string value;
     std::cin >> value;
     return value;
 }
 
-matrix_t load_csv(const std::string& input_csv_file)
+matrix_t load_csv(const std::string &input_csv_file)
 {
     PLOG_INFO << "Loading matrix from path: " << input_csv_file;
     std::ifstream data(input_csv_file);
@@ -44,7 +45,8 @@ matrix_t load_csv(const std::string& input_csv_file)
     // Checking if file contains second dimensional line - if it does not, go back
     std::streampos curr_position = data.tellg();
     std::getline(data, line);
-    if (line.find(';') != std::string::npos) {
+    if (line.find(';') != std::string::npos)
+    {
         data.seekg(curr_position, std::ios_base::beg);
     }
     matrix_t parsed_csv;
@@ -142,14 +144,16 @@ matrix_t receive_broadcast()
     return received_matrix;
 }
 
-void save_matrix(const matrix_t &matrix_to_save, const std::string &output_file_path) {
+void save_matrix(const matrix_t &matrix_to_save, const std::string &output_file_path)
+{
     std::ofstream output(output_file_path);
     PLOG_INFO << "Saving file under path: " << output_file_path;
     output << matrix_to_save.size() << std::endl;
     output << matrix_to_save.at(0).size() << std::endl;
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(4);
-    for (auto row : matrix_to_save) {
+    for (auto row : matrix_to_save)
+    {
         oss.str(std::string());
         std::copy(row.begin(), row.end() - 1, std::ostream_iterator<double>(oss, ";"));
         std::copy(row.end() - 1, row.end(), std::ostream_iterator<double>(oss));
@@ -157,22 +161,27 @@ void save_matrix(const matrix_t &matrix_to_save, const std::string &output_file_
     }
 }
 
-void run_sequentially(const matrix_t& matrix_a, const matrix_t& matrix_b) {
+void run_sequentially(const matrix_t &matrix_a, const matrix_t &matrix_b)
+{
     matrix_t output_matrix(matrix_a.size(), std::vector<double>(matrix_b.at(0).size()));
     int output_rows = output_matrix.size();
     int output_columns = output_matrix.at(0).size();
     int inner_size = matrix_b.size();
     PLOG_INFO << "Multiplying matrixes using sequential method";
-    for (int row = 0; row < output_rows; row++) {
-        for (int col = 0; col < output_columns; col++) {
-            for (int inner = 0; inner < inner_size; inner++) {
+    for (int row = 0; row < output_rows; row++)
+    {
+        for (int col = 0; col < output_columns; col++)
+        {
+            for (int inner = 0; inner < inner_size; inner++)
+            {
                 output_matrix[row][col] += matrix_a[row][inner] * matrix_b[inner][col];
             }
         }
     }
 }
 
-void receive_output_from_nodes(int num_of_nodes, matrix_t &final_matrix) {
+void receive_output_from_nodes(int num_of_nodes, matrix_t &final_matrix)
+{
     for (int currNodeNum = 1; currNodeNum < num_of_nodes; currNodeNum++)
     {
         matrix_t out_matrix = receive_matrix(currNodeNum);
@@ -181,7 +190,8 @@ void receive_output_from_nodes(int num_of_nodes, matrix_t &final_matrix) {
 }
 
 matrix_t process_master_node_parallel(int num_of_nodes, matrix_t &matrix_a, const matrix_t &matrix_b,
-                                      int matrix_size) {
+                                      int matrix_size)
+{
     PLOG_INFO << "Sending data to other nodes";
     matrix_t final_matrix;
     int chunk = matrix_size / num_of_nodes;
@@ -206,15 +216,15 @@ matrix_t process_master_node_parallel(int num_of_nodes, matrix_t &matrix_a, cons
     return final_matrix;
 }
 
-void process_matrix_other_nodes(int node) {
+void process_matrix_other_nodes(int node)
+{
     matrix_t local_matrix_a = receive_matrix(0);
     PLOG_INFO << "Loaded matrix a for node " << node;
     matrix_t local_matrix_b = receive_broadcast();
     PLOG_INFO << "Loaded matrix b for node " << node;
     matrix_t output_matrix = multiply_matrixes(local_matrix_a, local_matrix_b);
-    PLOG_INFO << "Processed output matrix for node " << node;
+    PLOG_INFO << "Finished processing, node: " << node;
     send_matrix(output_matrix, 0, 0, output_matrix.size() - 1, output_matrix.at(0).size());
-    PLOG_INFO << "Sent output matrix from node " << node;
 }
 
 int main()
@@ -251,8 +261,6 @@ int main()
     {
         process_matrix_other_nodes(node);
     }
-    PLOG_INFO << "Finished processing, node: " << node;
-
     MPI_Barrier(MPI_COMM_WORLD);
     if (node == 0)
     {
@@ -266,6 +274,7 @@ int main()
         oss << "C_" << sequential_time << "_" << parallel_time << ".csv";
         save_matrix(final_matrix, oss.str());
     }
+    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
 }
