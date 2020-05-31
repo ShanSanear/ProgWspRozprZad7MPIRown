@@ -11,6 +11,29 @@
 
 using matrix_t = std::vector<std::vector<double>>;
 
+void print_matrix(const matrix_t& matrix, int node, const std::string& matrix_name)
+{
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(6);
+    for (const std::vector<double>& row : matrix)
+    {
+        for (double cell : row)
+        {
+            oss << cell << ";";
+        }
+        oss << "\n";
+    }
+    oss << "Node: " << node << " Matrix: " << matrix_name;
+    PLOG_INFO << oss.str();
+}
+
+std::string get_string_from_cin(const std::string& prompt) {
+    printf("%s\n", prompt.c_str());
+    std::string value;
+    std::cin >> value;
+    return value;
+}
+
 matrix_t load_csv(const std::string& input_csv_file)
 {
     PLOG_INFO << "Loading matrix from path: " << input_csv_file;
@@ -39,22 +62,6 @@ matrix_t load_csv(const std::string& input_csv_file)
         parsed_csv.push_back(parsedRow);
     }
     return parsed_csv;
-}
-
-void print_matrix(const matrix_t& matrix, int node, const std::string& matrix_name)
-{
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(6);
-    for (const std::vector<double>& row : matrix)
-    {
-        for (double cell : row)
-        {
-            oss << cell << ";";
-        }
-        oss << "\n";
-    }
-    oss << "Node: " << node << " Matrix: " << matrix_name;
-    PLOG_INFO << oss.str();
 }
 
 matrix_t multiply_matrixes(matrix_t matrix_a, matrix_t matrix_b)
@@ -163,13 +170,6 @@ void run_sequentially(const matrix_t& matrix_a, const matrix_t& matrix_b) {
             }
         }
     }
-}
-
-std::string get_string_from_cin(const std::string& prompt) {
-    printf("%s\n", prompt.c_str());
-    std::string value;
-    std::cin >> value;
-    return value;
 }
 
 void receive_output_from_nodes(int num_of_nodes, matrix_t &final_matrix) {
