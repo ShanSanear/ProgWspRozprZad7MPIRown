@@ -81,9 +81,9 @@ void send_matrix(const matrix_t &matrix_to_send, int target_node, int start_row,
     MPI_Send(&start_row, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
     MPI_Send(&end_row, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
     MPI_Send(&column_count, 1, MPI_INT, target_node, 0, MPI_COMM_WORLD);
-    for (int current_row = start_row; current_row <= end_row; current_row++)
+    for (int row_idx = start_row; row_idx <= end_row; row_idx++)
     {
-        MPI_Send(matrix_to_send.at(current_row).data(), column_count, MPI_DOUBLE, target_node, 0, MPI_COMM_WORLD);
+        MPI_Send(matrix_to_send.at(row_idx).data(), column_count, MPI_DOUBLE, target_node, 0, MPI_COMM_WORLD);
     }
 }
 
@@ -98,10 +98,10 @@ matrix_t receive_matrix(int source_node)
     MPI_Recv(&local_col_count, 1, MPI_INT, source_node, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     for (int current_row = local_start; current_row <= local_end; current_row++)
     {
-        std::vector<double> local_entry;
-        local_entry.resize(local_col_count);
-        MPI_Recv(local_entry.data(), local_col_count, MPI_DOUBLE, source_node, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        output_matrix.push_back(local_entry);
+        std::vector<double> matrix_row;
+        matrix_row.resize(local_col_count);
+        MPI_Recv(matrix_row.data(), local_col_count, MPI_DOUBLE, source_node, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        output_matrix.push_back(matrix_row);
     }
     return output_matrix;
 }
