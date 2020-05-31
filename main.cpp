@@ -212,7 +212,9 @@ void process_matrix_other_nodes(int node) {
     matrix_t local_matrix_b = receive_broadcast();
     PLOG_INFO << "Loaded matrix b for node " << node;
     matrix_t output_matrix = multiply_matrixes(local_matrix_a, local_matrix_b);
+    PLOG_INFO << "Processed output matrix for node " << node;
     send_matrix(output_matrix, 0, 0, output_matrix.size() - 1, output_matrix.at(0).size());
+    PLOG_INFO << "Sent output matrix from node " << node;
 }
 
 int main()
@@ -244,7 +246,6 @@ int main()
         sequential_time = end_time - start_time;
         start_time = MPI_Wtime();
         final_matrix = process_master_node_parallel(num_of_nodes, matrix_a, matrix_b, matrix_size);
-
     }
     else
     {
