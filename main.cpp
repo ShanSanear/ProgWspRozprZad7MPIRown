@@ -223,7 +223,6 @@ void process_matrix_other_nodes(int node)
     matrix_t local_matrix_b = receive_broadcast();
     PLOG_INFO << "Loaded matrix b for node " << node;
     matrix_t output_matrix = multiply_matrixes(local_matrix_a, local_matrix_b);
-    PLOG_INFO << "Finished processing, node: " << node;
     send_matrix(output_matrix, 0, 0, output_matrix.size() - 1, output_matrix.at(0).size());
 }
 
@@ -267,6 +266,7 @@ int main()
         //Postprocessing
         end_time = MPI_Wtime();
         parallel_time = end_time - start_time;
+        sleep(2);
         PLOG_INFO << "Parallized time: " << parallel_time << " second(s)";
         PLOG_INFO << "Serialized time taken: " << sequential_time << " second(s)";
         std::ostringstream oss;
@@ -275,6 +275,9 @@ int main()
         save_matrix(final_matrix, oss.str());
     }
     MPI_Barrier(MPI_COMM_WORLD);
+    PLOG_INFO << "Finished processing, node: " << node;
+    MPI_Barrier(MPI_COMM_WORLD);
+
     MPI_Finalize();
     return 0;
 }
