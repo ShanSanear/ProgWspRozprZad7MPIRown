@@ -172,6 +172,14 @@ std::string get_string_from_cin(const std::string& prompt) {
     return value;
 }
 
+void receive_output_from_nodes(int num_of_nodes, matrix_t &final_matrix) {
+    for (int currNodeNum = 1; currNodeNum < num_of_nodes; currNodeNum++)
+    {
+        matrix_t out_matrix = receive_matrix(currNodeNum);
+        final_matrix.insert(final_matrix.end(), out_matrix.begin(), out_matrix.end());
+    }
+}
+
 matrix_t process_master_node_parallel(int num_of_nodes, matrix_t &matrix_a, const matrix_t &matrix_b,
                                       int matrix_size) {
     PLOG_INFO << "Sending data to other nodes";
@@ -193,11 +201,7 @@ matrix_t process_master_node_parallel(int num_of_nodes, matrix_t &matrix_a, cons
     matrix_t local_matrix_a = matrix_t(matrix_a.begin() + local_start, matrix_a.end());
     matrix_t local_output_matrix = multiply_matrixes(local_matrix_a, matrix_b);
 
-    for (int currNodeNum = 1; currNodeNum < num_of_nodes; currNodeNum++)
-    {
-        matrix_t out_matrix = receive_matrix(currNodeNum);
-        final_matrix.insert(final_matrix.end(), out_matrix.begin(), out_matrix.end());
-    }
+    receive_output_from_nodes(num_of_nodes, final_matrix);
     final_matrix.insert(final_matrix.end(), local_output_matrix.begin(), local_output_matrix.end());
     return final_matrix;
 }
