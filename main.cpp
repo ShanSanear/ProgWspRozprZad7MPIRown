@@ -137,7 +137,7 @@ matrix_t receive_broadcast()
 
 void save_matrix(const matrix_t &matrix_to_save, const std::string &output_file_path) {
     std::ofstream output(output_file_path);
-
+    PLOG_INFO << "Saving file under path: " << output_file_path;
     output << matrix_to_save.size() << std::endl;
     output << matrix_to_save.at(0).size() << std::endl;
     std::ostringstream oss;
@@ -172,29 +172,29 @@ std::string get_string_from_cin(const std::string& prompt) {
     return value;
 }
 
-matrix_t process_master_node_parallel(int numOfNodes, matrix_t &matrix_a, const matrix_t &matrix_b,
+matrix_t process_master_node_parallel(int num_of_nodes, matrix_t &matrix_a, const matrix_t &matrix_b,
                                       int matrix_size) {
     PLOG_INFO << "Sending data to other nodes";
     matrix_t final_matrix;
-    int rest = matrix_size % numOfNodes;
-    int chunk = matrix_size / numOfNodes;
+    int rest = matrix_size % num_of_nodes;
+    int chunk = matrix_size / num_of_nodes;
     int row_count = matrix_a.size();
     int column_count = matrix_a.at(0).size();
     PLOG_INFO << "Rest from division: " << rest;
-    for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
+    for (int currNodeNum = 1; currNodeNum < num_of_nodes; currNodeNum++)
     {
         int start = (currNodeNum - 1) * chunk;
         int end = currNodeNum * chunk - 1;
         send_matrix(matrix_a, currNodeNum, start, end, column_count);
     }
     send_broadcast(matrix_b);
-    int local_start = (numOfNodes - 1) * chunk;
+    int local_start = (num_of_nodes - 1) * chunk;
 
     int local_end = matrix_size;
     matrix_t local_matrix_a = matrix_t(matrix_a.begin() + local_start, matrix_a.end());
     matrix_t local_matrix = multiply_matrixes(local_matrix_a, matrix_b);
 
-    for (int currNodeNum = 1; currNodeNum < numOfNodes; currNodeNum++)
+    for (int currNodeNum = 1; currNodeNum < num_of_nodes; currNodeNum++)
     {
         matrix_t out_matrix = receive_matrix(currNodeNum);
         final_matrix.insert(final_matrix.end(), out_matrix.begin(), out_matrix.end());
@@ -214,16 +214,17 @@ void process_matrix_other_nodes(int node) {
 
 int main()
 {
-    double startTime, endTime, parallelTimeTaken, timeSingle;
+    int node, num_of_nodes;
+    double start_time, end_time, parallel_time, sequential_time;
     matrix_t final_matrix;
+
     plog::RollingFileAppender<plog::TxtFormatter> fileAppender("Datalogger.txt", 1048576, 5);
     plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
     plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
-    int node, numOfNodes;
+
     MPI_Init(NULL, NULL);
-    MPI_Comm_size(MPI_COMM_WORLD, &numOfNodes);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_of_nodes);
     MPI_Comm_rank(MPI_COMM_WORLD, &node);
-    // Master node
     if (node == 0)
     {
         std::string matrix_a_path = get_string_from_cin("Provide path for matrix A:");
@@ -233,13 +234,13 @@ int main()
         matrix_t matrix_a = load_csv(matrix_a_path);
         matrix_t matrix_b = load_csv(matrix_b_path);
         int matrix_size = matrix_a.size();
-        startTime = MPI_Wtime();
+        start_time = MPI_Wtime();
         // Start processing on node 0 sequentially
         run_sequentially(matrix_a, matrix_b);
-        endTime = MPI_Wtime();
-        timeSingle = endTime - startTime;
-        startTime = MPI_Wtime();
-        final_matrix = process_master_node_parallel(numOfNodes, matrix_a, matrix_b, matrix_size);
+        end_time = MPI_Wtime();
+        sequential_time = end_time - start_time;
+        start_time = MPI_Wtime();
+        final_matrix = process_master_node_parallel(num_of_nodes, matrix_a, matrix_b, matrix_size);
 
     }
     else
@@ -252,13 +253,13 @@ int main()
     if (node == 0)
     {
         //Postprocessing
-        endTime = MPI_Wtime();
-        parallelTimeTaken = endTime - startTime;
-        PLOG_INFO << "Parallized time: " << parallelTimeTaken << " second(s)";
-        PLOG_INFO << "Serialized time taken: " << timeSingle << " second(s)";
+        end_time = MPI_Wtime();
+        parallel_time = end_time - start_time;
+        PLOG_INFO << "Parallized time: " << parallel_time << " second(s)";
+        PLOG_INFO << "Serialized time taken: " << sequential_time << " second(s)";
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(4);
-        oss << "C_" << timeSingle << "_" << parallelTimeTaken << ".csv";
+        oss << "C_" << sequential_time << "_" << parallel_time << ".csv";
         save_matrix(final_matrix, oss.str());
     }
     MPI_Finalize();
